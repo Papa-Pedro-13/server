@@ -4,7 +4,9 @@
 
 ### В папке dexmodule находится проект с dex модулем :\
 
-### Собирается в android studio build/(make module "dexmodule.dexmodule") или просто build. Перед сборкой стоит уточнить ip-адрес компа с сервером и в случае необходимости заменить в коде private val serverBaseUrl = "http://192.168.0.101:3000" на свой адрес.
+### Собирается в android studio build/(make module "dexmodule.dexmodule") или просто build. 
+
+### Перед сборкой стоит уточнить ip-адрес компа с сервером и в случае необходимости заменить в коде private val serverBaseUrl = "http://192.168.0.101:3000" на свой адрес.
 
 ### Cам dex модуль  будет находится по пути:
 
@@ -23,3 +25,4 @@ node server.js
 
 [Ссылка](https://github.com/Papa-Pedro-13/bos-1)
 
+# В этом проекте также надо заменить ip 192.168.0.101 на свой
